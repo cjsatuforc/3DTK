@@ -7,6 +7,7 @@
 #include <sstream>
 #include "slam6d/pointfilter.h"
 #include "slam6d/io_types.h"
+#include "slam6d/scan_settings.h"
 
 class ScanDataTransform {
     public:
@@ -54,6 +55,11 @@ std::list<std::string> readDirectoryHelper(
         const char* dir_path,
         unsigned int start,
         unsigned int end,
+        const char** data_path_suffix,
+        const char* data_path_prefix = "scan",
+        unsigned int id_len = 3);
+std::list<std::string> readDirectoryHelper(
+        const scan_settings& ss,
         const char** data_path_suffix,
         const char* data_path_prefix = "scan",
         unsigned int id_len = 3);

@@ -1,4 +1,3 @@
-#include "..\..\include\slam6d\basicScan.h"
 /*
  * basicScan implementation
  *
