@@ -10,6 +10,7 @@
 #ifndef __SCAN_H__
 #define __SCAN_H__
 
+#include "show/program_options.h"
 #include "io_types.h"
 #include "data_types.h"
 #include "point_type.h"
