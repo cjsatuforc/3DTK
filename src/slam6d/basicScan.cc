@@ -1,3 +1,4 @@
+#include "..\..\include\slam6d\basicScan.h"
 /*
  * basicScan implementation
  *
@@ -35,13 +36,13 @@ using namespace boost::filesystem;
 
 
 void BasicScan::openDirectory(const std::string& path,
-                              IOType type,
-                              int start,
-                              int end
+  IOType type,
+  int start,
+  int end
 #ifdef WITH_MMAP_SCAN
-                              , boost::filesystem::path cache
+  , boost::filesystem::path cache
 #endif
-                              )
+)
 {
 #ifdef WITH_METRICS
   Timer t = ClientMetric::read_scan_time.start();
@@ -52,20 +53,61 @@ void BasicScan::openDirectory(const std::string& path,
 
   // query available scans in the directory from the ScanIO
   std::list<std::string> identifiers(sio->readDirectory(path.c_str(),
-                                                        start,
-                                                        end));
+    start,
+    end));
+
+  Scan::allScans.reserve(identifiers.size());
+
+  // for each identifier, create a scan
+  for (std::list<std::string>::iterator it = identifiers.begin();
+    it != identifiers.end();
+    ++it) {
+    Scan::allScans.push_back(new BasicScan(path, *it, type
+#ifdef WITH_MMAP_SCAN
+      , cache
+#endif
+    ));
+  }
+
+#ifdef WITH_METRICS
+  ClientMetric::read_scan_time.end(t);
+#endif //WITH_METRICS
+}
+
+void BasicScan::openDirectory(const scan_settings& ss
+#ifdef WITH_MMAP_SCAN
+  , boost::filesystem::path cache
+#endif
+)
+{
+#ifdef WITH_METRICS
+  Timer t = ClientMetric::read_scan_time.start();
+#endif //WITH_METRICS
+
+  // create an instance of ScanIO
+  ScanIO* sio = ScanIO::getScanIO(ss.format);
+
+  // query available scans in the directory from the ScanIO
+  std::list<std::string> identifiers(sio->readDirectory(ss.input_directory.c_str(),
+    ss.scan_numbers.min,
+    ss.scan_numbers.max));
 
   Scan::allScans.reserve(Scan::allScans.size() + identifiers.size());
 
   // for each identifier, create a scan
-  for(std::list<std::string>::iterator it = identifiers.begin();
-      it != identifiers.end();
-      ++it) {
-    Scan::allScans.push_back(new BasicScan(path, *it, type
+  int scan_nr = 0;
+  for (std::list<std::string>::iterator it = identifiers.begin();
+    it != identifiers.end();
+    ++it) {
+    if (scan_nr % ss.skip_files == 0)
+    {
+      Scan::allScans.push_back(new BasicScan(ss, *it
 #ifdef WITH_MMAP_SCAN
-                                           , cache
+        , cache
 #endif
-                                          ));
+      ));
+    }
+    scan_nr++;
   }
 
 #ifdef WITH_METRICS
@@ -78,12 +120,12 @@ void BasicScan::closeDirectory()
   // clean up the scan vector
 
   // avoiding "Expression: vector iterators incompatible" on empty allScans-vector
-  if (Scan::allScans.size()){
-    for(ScanVector::iterator it = Scan::allScans.begin(); 
-      it != Scan::allScans.end(); 
+  if (Scan::allScans.size()) {
+    for (ScanVector::iterator it = Scan::allScans.begin();
+      it != Scan::allScans.end();
       ++it) {
-        delete *it; 
-        *it = 0;
+      delete *it;
+      *it = 0;
     }
     Scan::allScans.clear();
   }
@@ -203,13 +245,13 @@ BasicScan::BasicScan(double *_rPos,
   }
 }
 
-BasicScan::BasicScan(const std::string& path, 
-                     const std::string& identifier, 
-                     IOType type
+BasicScan::BasicScan(const std::string& path,
+  const std::string& identifier,
+  IOType type
 #ifdef WITH_MMAP_SCAN
-                     , boost::filesystem::path cache
+  , boost::filesystem::path cache
 #endif
-                     ) :
+) :
   m_path(path), m_identifier(identifier), m_type(type)
 {
   init();
@@ -218,8 +260,9 @@ BasicScan::BasicScan(const std::string& path,
   double euler[6];
   ScanIO* sio = ScanIO::getScanIO(m_type);
   if (Scan::continue_processing) {
-    sio->readPoseFromFrames(m_path.c_str(), m_identifier.c_str(), euler);    
-  } else {
+    sio->readPoseFromFrames(m_path.c_str(), m_identifier.c_str(), euler);
+  }
+  else {
     sio->readPose(m_path.c_str(), m_identifier.c_str(), euler, &m_timestamp);
   }
   rPos[0] = euler[0];

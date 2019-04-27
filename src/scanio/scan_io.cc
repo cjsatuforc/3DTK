@@ -152,6 +152,12 @@ std::list<std::string> ScanIO::readDirectory(const char* dir_path, unsigned int 
   return readDirectoryHelper(dir_path, start, end, data_path_suffixes, dataPrefix());
 }
 
+std::list<std::string> ScanIO::readDirectory(const scan_settings& ss)
+{
+  const char* data_path_suffixes[2] = { dataSuffix(), NULL };
+  return readDirectoryHelper(ss.input_directory.c_str(), ss.scan_numbers.min, ss.scan_numbers.max, data_path_suffixes, dataPrefix());
+}
+
 void ScanIO::readPose(const char* dir_path, const char* identifier, double* pose)
 {
   readPoseHelper(dir_path, identifier, pose, poseSuffix(), posePrefix());

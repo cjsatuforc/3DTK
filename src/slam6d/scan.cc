@@ -122,11 +122,16 @@ void Scan::openDirectory(const scan_settings& ss
 
   std::vector<Scan*> valid_scans = Scan::allScans;
   int scan_nr = Scan::allScans.size();
-  openDirectory(ss.use_scanserver, ss.input_directory, ss.format, ss.scan_numbers.min, ss.scan_numbers.max
+  
+  if (ss.use_scanserver)
+    ManagedScan::openDirectory(ss.input_directory, ss.format, ss.scan_numbers.min, ss.scan_numbers.max);
+  else {
+    BasicScan::openDirectory(ss
 #ifdef WITH_MMAP_SCAN
-    , cache
+      , cache
 #endif
-  );
+    );
+  }
 
   for (; scan_nr < Scan::allScans.size(); ++scan_nr) {
     Scan* scan = Scan::allScans[scan_nr];
@@ -137,16 +142,18 @@ void Scan::openDirectory(const scan_settings& ss
       // scanserver differentiates between reduced for slam and
       // reduced for show, can handle both at the same time
       if (ss.use_scanserver) {
-        dynamic_cast<ManagedScan*>(scan)->setShowReductionParameter(ss.octree_reduction_voxel, ss.octree_reduction_randomized_bucket);
+        if ((scan_nr - 1) % ss.skip_files != 0) delete scan;
+        else {
+          valid_scans.push_back(scan);
+          dynamic_cast<ManagedScan*>(scan)->setShowReductionParameter(ss.octree_reduction_voxel, ss.octree_reduction_randomized_bucket);
+        }
       }
       else {
         scan->setReductionParameter(ss.octree_reduction_voxel, ss.octree_reduction_randomized_bucket);
       }
     }
-    if ((scan_nr - 1) % ss.skip_files != 0) delete scan;
-    else valid_scans.push_back(scan);
   }
-  if (Scan::allScans.size() > valid_scans.size()) Scan::allScans = valid_scans;
+  if (ss.use_scanserver && Scan::allScans.size() > valid_scans.size()) Scan::allScans = valid_scans;
 }
 
 void Scan::closeDirectory()
