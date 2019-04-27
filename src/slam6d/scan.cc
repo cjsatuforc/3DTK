@@ -69,6 +69,86 @@ void Scan::openDirectory(bool scanserver,
                             );
 }
 
+void Scan::openDirectory(const scan_settings& ss
+#ifdef WITH_MMAP_SCAN
+  , boost::filesystem::path cache
+#endif
+ )
+{
+  // custom filter set? quick check, needs to contain at least one ';' 
+// (proper checking will be done case specific in pointfilter.cc)
+  size_t pos = ss.custom_filter.find_first_of(";");
+  bool customFilterActive = false;
+  std::string custom_filter = ss.custom_filter;
+  if (pos != std::string::npos) {
+    customFilterActive = true;
+
+    // check if customFilter is specified in file
+    if (ss.custom_filter.find("FILE;") == 0) {
+      std::string selection_file_name = custom_filter.substr(5, custom_filter.length());
+      std::ifstream selectionfile;
+      // open the input file
+      selectionfile.open(selection_file_name, std::ios::in);
+
+      if (!selectionfile.good()) {
+        std::cerr << "Error loading custom filter file " << selection_file_name << "!" << std::endl;
+        std::cerr << "Data will NOT be filtered.!" << std::endl;
+        customFilterActive = false;
+      }
+      else {
+        std::string line;
+        std::string custFilt;
+        while (std::getline(selectionfile, line)) {
+          // allow comment or empty lines
+          if (line.find("#") == 0) continue;
+          if (line.length() < 1) continue;
+          custFilt = custFilt.append(line);
+          custFilt = custFilt.append("/");
+        }
+        if (custFilt.length() > 0) {
+          // last '/'
+          custom_filter = custFilt.substr(0, custFilt.length() - 1);
+        }
+      }
+      selectionfile.close();
+    }
+  }
+  else {
+    // give a warning if custom filter has been inproperly specified
+    if (custom_filter.length() > 0) {
+      std::cerr << "Custom filter: specifying string has not been set properly, data will NOT be filtered." << std::endl;
+    }
+  }
+
+  std::vector<Scan*> valid_scans = Scan::allScans;
+  int scan_nr = Scan::allScans.size();
+  openDirectory(ss.use_scanserver, ss.input_directory, ss.format, ss.scan_numbers.min, ss.scan_numbers.max
+#ifdef WITH_MMAP_SCAN
+    , cache
+#endif
+  );
+
+  for (; scan_nr < Scan::allScans.size(); ++scan_nr) {
+    Scan* scan = Scan::allScans[scan_nr];
+    scan->setRangeFilter(ss.distance_filter.max, ss.distance_filter.min);
+    if (customFilterActive) scan->setCustomFilter(custom_filter);
+    if (ss.sphere_radius > 0.0) scan->setRangeMutation(ss.sphere_radius);
+    if (ss.octree_reduction_voxel > 0) {
+      // scanserver differentiates between reduced for slam and
+      // reduced for show, can handle both at the same time
+      if (ss.use_scanserver) {
+        dynamic_cast<ManagedScan*>(scan)->setShowReductionParameter(ss.octree_reduction_voxel, ss.octree_reduction_randomized_bucket);
+      }
+      else {
+        scan->setReductionParameter(ss.octree_reduction_voxel, ss.octree_reduction_randomized_bucket);
+      }
+    }
+    if ((scan_nr - 1) % ss.skip_files != 0) delete scan;
+    else valid_scans.push_back(scan);
+  }
+  if (Scan::allScans.size() > valid_scans.size()) Scan::allScans = valid_scans;
+}
+
 void Scan::closeDirectory()
 {
   if (scanserver)

@@ -121,11 +121,11 @@ class ANNkd_tree;
 class Scan {
 public:
   enum AlgoType { INVALID, ICP, ICPINACTIVE, LUM, ELCH };
-  
+
   // delete copy-ctor and assignment, scans shouldn't be copied by basic class
   Scan(const Scan& other) = delete;
   Scan& operator=(const Scan& other) = delete;
-  
+
   virtual ~Scan();
 
   //! Holder of all scans
@@ -134,13 +134,13 @@ public:
 
   static unsigned int maxScanNr;
   unsigned int scanNr;
-  
+
   // continue processing from last frames entry
   static bool continue_processing;
-  
+
   // current processing command
   static std::string processing_command;
-  
+
   /**
     * Attempt to read a directory under \a path and return its read scans.
     * No scans are loaded at this point, only checked if all exist.
@@ -170,13 +170,7 @@ public:
 #ifdef WITH_MMAP_SCAN
     , boost::filesystem::path cache = boost::filesystem::path()
 #endif
-  ) {
-    openDirectory(ss.use_scanserver, ss.input_directory, ss.format, ss.scan_numbers.min, ss.scan_numbers.max
-#ifdef WITH_MMAP_SCAN
-      , cache
-#endif
-    );
-  }
+  );
 
   /**
    * "Close" a directory by deleting all its scans and emptying the

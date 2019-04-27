@@ -718,85 +718,12 @@ void initShow(const dataset_settings& ds, const window_settings& ws){
   loading_status("Loading scans");
   // We would have to hook loading_progress into there really uglily
   Scan::openDirectory(ds);
-  //Scan::openDirectory(scanserver, dir, type, start, end);
 
   if (Scan::allScans.size() == 0) {
     std::cerr << "No scans found. Did you use the correct format?" << std::endl;
     exit(-1);
   }
-
-  // custom filter set? quick check, needs to contain at least one ';' 
-  // (proper checking will be done case specific in pointfilter.cc)
-  size_t pos = customFilter.find_first_of(";");
-  if (pos != std::string::npos){
-    customFilterActive = true;
-
-    // check if customFilter is specified in file
-    if (customFilter.find("FILE;") == 0){
-      std::string selection_file_name = customFilter.substr(5, customFilter.length());
-      std::ifstream selectionfile;
-      // open the input file
-      selectionfile.open(selection_file_name, std::ios::in);
-
-      if (!selectionfile.good()){
-        std::cerr << "Error loading custom filter file " << selection_file_name << "!" << std::endl;
-        std::cerr << "Data will NOT be filtered.!" << std::endl;
-        customFilterActive = false;
-      }
-      else {
-        std::string line;
-        std::string custFilt;
-        while (std::getline(selectionfile, line)){
-          // allow comment or empty lines
-          if (line.find("#") == 0) continue;
-          if (line.length() < 1) continue;
-          custFilt = custFilt.append(line);
-          custFilt = custFilt.append("/");
-        }
-        if (custFilt.length() > 0) {
-          // last '/'
-          customFilter = custFilt.substr(0, custFilt.length() - 1);
-        }
-      }
-      selectionfile.close();
-    }
-  }
-  else {
-    // give a warning if custom filter has been inproperly specified
-    if (customFilter.length() > 0){
-      std::cerr << "Custom filter: specifying string has not been set properly, data will NOT be filtered." << std::endl;
-    }
-  }
   
-  loading_status("Applying filters and reduction");
-  loading_progress(0, 0, Scan::allScans.size());
-  int scanNr = 0;
-  std::vector<Scan*> valid_scans;
-  for (ScanVector::iterator it = Scan::allScans.begin();
-       it != Scan::allScans.end();
-       ++it) {
-    Scan* scan = *it;
-    scan->setRangeFilter(maxDist, minDist);
-    if (customFilterActive) scan->setCustomFilter(customFilter);
-    if (sphereMode > 0.0) scan->setRangeMutation(sphereMode);
-    if (red > 0) {
-      // scanserver differentiates between reduced for slam and
-      // reduced for show, can handle both at the same time
-      if(scanserver) {
-        dynamic_cast<ManagedScan*>(scan)->setShowReductionParameter(red, octree);
-      } else {
-        scan->setReductionParameter(red, octree);
-      }
-    }
-    scanNr++;
-    if ((scanNr-1)%stepsize != 0) delete scan; 
-    else valid_scans.push_back(scan);
-
-    loading_progress(scanNr, 0, Scan::allScans.size());
-  }
-  //Remove scans if some got invalid due to filtering
-  if(Scan::allScans.size() > valid_scans.size()) Scan::allScans = valid_scans;
-
   if (sphereMode > 0.0) {
     cm = new ScanColorManager(4096, pointtype, /* animation_color = */ false);
   } else {

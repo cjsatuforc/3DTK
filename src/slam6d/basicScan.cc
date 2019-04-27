@@ -55,7 +55,7 @@ void BasicScan::openDirectory(const std::string& path,
                                                         start,
                                                         end));
 
-  Scan::allScans.reserve(identifiers.size());
+  Scan::allScans.reserve(Scan::allScans.size() + identifiers.size());
 
   // for each identifier, create a scan
   for(std::list<std::string>::iterator it = identifiers.begin();
