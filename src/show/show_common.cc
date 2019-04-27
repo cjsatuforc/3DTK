@@ -717,8 +717,9 @@ void initShow(const dataset_settings& ds, const window_settings& ws){
   
   loading_status("Loading scans");
   // We would have to hook loading_progress into there really uglily
-  Scan::openDirectory(scanserver, dir, type, start, end);
-  
+  Scan::openDirectory(ds);
+  //Scan::openDirectory(scanserver, dir, type, start, end);
+
   if (Scan::allScans.size() == 0) {
     std::cerr << "No scans found. Did you use the correct format?" << std::endl;
     exit(-1);

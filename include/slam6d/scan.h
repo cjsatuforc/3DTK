@@ -10,7 +10,7 @@
 #ifndef __SCAN_H__
 #define __SCAN_H__
 
-#include "show/program_options.h"
+#include "slam6d/scan_settings.h"
 #include "io_types.h"
 #include "data_types.h"
 #include "point_type.h"
@@ -144,7 +144,7 @@ public:
   /**
     * Attempt to read a directory under \a path and return its read scans.
     * No scans are loaded at this point, only checked if all exist.
-    * 
+    *
     * @param scanserver whether to use managed scans in the scanserver or not
     * @param path to the directory containing the scans
     * @param type determining which ScanIO to use
@@ -152,15 +152,32 @@ public:
     * @param end last scan to use, -1 means from start to last available
     */
   static void openDirectory(bool scanserver,
-                            const std::string& path,
-                            IOType type,
-                            int start,
-                            int end = -1
+    const std::string& path,
+    IOType type,
+    int start,
+    int end = -1
 #ifdef WITH_MMAP_SCAN
-                            , boost::filesystem::path cache = boost::filesystem::path()
+    , boost::filesystem::path cache = boost::filesystem::path()
 #endif
-                            );
-  
+  );
+
+  /**
+    * scan_settings version of openDirectory.
+    *
+    * @param scan_settings settings object defining scan attributes
+    */
+  static void openDirectory(const scan_settings& ss
+#ifdef WITH_MMAP_SCAN
+    , boost::filesystem::path cache = boost::filesystem::path()
+#endif
+  ) {
+    openDirectory(ss.use_scanserver, ss.input_directory, ss.format, ss.scan_numbers.min, ss.scan_numbers.max
+#ifdef WITH_MMAP_SCAN
+      , cache
+#endif
+    );
+  }
+
   /**
    * "Close" a directory by deleting all its scans and emptying the
    * Scan::allScans vector.
