@@ -77,58 +77,56 @@ if not exist %sourcedir% (
 
 if not exist "%outdir%" mkdir "%outdir%"
 
-set vcpkgcommit=eccae2adaa20c64a44034a6115c6c5f90be201be
+:: build our own vcpkg to be able to make use of more recent vcpkg features
+:: than the vcpkg installed on appveyor
+::
+:: snapshot from 2019-04-29
+set vcpkgcommit=5314524f445222209aff9f372933fef0702e1913
 set vcpkgurl=https://github.com/Microsoft/vcpkg/archive/!vcpkgcommit!.zip
-set vcpkghash=f9-91-c3-6b-54-d1-c5-79-69-7a-25-79-1b-f3-fa-d6
+set vcpkghash=82-4d-a9-6d-af-de-75-99-b5-2d-0c-4e-43-3c-02-a0
 set vcpkgzip=%outdir%\vcpkg.zip
 set vcpkgdir=%outdir%\3rdparty\vcpkg
-where vcpkg
-:: there is no AND or OR logical operator in windows batch
-if %ERRORLEVEL% NEQ 0 (
-	if not exist %vcpkgdir% (
-		call:reset_error
-		if not exist !vcpkgzip! (
-			echo downloading !vcpkgzip!...
-			call:download !vcpkgurl! !vcpkgzip!
-		)
-		echo checking md5sum of !vcpkgzip!...
-		call:checkmd5 !vcpkgzip! !vcpkghash!
-		if !ERRORLEVEL! GEQ 1 (
-			echo md5sum mismatch
-			exit /B 1
-		)
-		echo extracting !vcpkgzip! into !vcpkgdir!...
-		call:unzip !vcpkgzip! !vcpkgdir!
-		if !ERRORLEVEL! GEQ 1 (
-			echo vcpkg unzip failed
-			exit /B 1
-		)
-		:: windows does not like long paths
-		:: including the git commit hash in the path makes building qt fail
-		move !vcpkgdir! "!vcpkgdir!.tmp"
-		if !ERRORLEVEL! GEQ 1 (
-			echo moving !vcpkgdir! to "!vcpkgdir!.tmp" failed
-			exit /B 1
-		)
-		move "!vcpkgdir!.tmp\vcpkg-!vcpkgcommit!" !vcpkgdir!
-		if !ERRORLEVEL! GEQ 1 (
-			echo moving "!vcpkgdir!.tmp\vcpkg-!vcpkgcommit!" to !vcpkgdir! failed
-			exit /B 1
-		)
-		rmdir "!vcpkgdir!.tmp"
-		:: have to use call or otherwise bootstrap-vcpkg.bat will exit everything
-		call !vcpkgdir!\bootstrap-vcpkg.bat
-		if !ERRORLEVEL! GEQ 1 (
-			echo bootstrap-vcpkg.bat failed
-			exit /B 1
-		)
+set vcpkgexe=!vcpkgdir!\vcpkg.exe
+set VCPKG_ROOT=!vcpkgdir!
+if not exist %vcpkgexe% (
+	call:reset_error
+	if not exist !vcpkgzip! (
+		echo downloading !vcpkgzip!...
+		call:download !vcpkgurl! !vcpkgzip!
 	)
-	set vcpkgexe=!vcpkgdir!\vcpkg.exe
-) else (
-	:: equivalent of vcpkgexe=$(where vcpkg)
-	for /f %%i in ('where vcpkg') do set vcpkgexe=%%i
-	:: equivalent of vcpkgdir=$(dirname vcpkgexe)
-	for %%F in ("!vcpkgexe!") do set vcpkgdir=%%~dpF
+	echo checking md5sum of !vcpkgzip!...
+	call:checkmd5 !vcpkgzip! !vcpkghash!
+	if !ERRORLEVEL! GEQ 1 (
+		echo md5sum mismatch
+		exit /B 1
+	)
+	echo extracting !vcpkgzip! into !vcpkgdir!...
+	call:unzip !vcpkgzip! !vcpkgdir!
+	if !ERRORLEVEL! GEQ 1 (
+		echo vcpkg unzip failed
+		exit /B 1
+	)
+	:: windows does not like long paths
+	:: including the git commit hash in the path makes building qt fail
+	move !vcpkgdir! "!vcpkgdir!.tmp"
+	if !ERRORLEVEL! GEQ 1 (
+		echo moving !vcpkgdir! to "!vcpkgdir!.tmp" failed
+		exit /B 1
+	)
+	move "!vcpkgdir!.tmp\vcpkg-!vcpkgcommit!" !vcpkgdir!
+	if !ERRORLEVEL! GEQ 1 (
+		echo moving "!vcpkgdir!.tmp\vcpkg-!vcpkgcommit!" to !vcpkgdir! failed
+		exit /B 1
+	)
+	rmdir "!vcpkgdir!.tmp"
+	:: have to use call or otherwise bootstrap-vcpkg.bat will exit everything
+	call !vcpkgdir!\bootstrap-vcpkg.bat
+	if !ERRORLEVEL! GEQ 1 (
+		echo bootstrap-vcpkg.bat failed
+		exit /B 1
+	)
+	:: only build release builds of all dependencies to avoid wasting time and energy
+	echo set^(VCPKG_BUILD_TYPE release^) >> !vcpkgdir!\triplets\x64-windows.cmake
 )
 
 echo vcpkgexe: %vcpkgexe%
